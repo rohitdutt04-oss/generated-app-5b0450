@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Netflix-like Streaming Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body>
+    <div id="root"></div>
+    <script src="https://cdn.jsdelivr.net/npm/react@17.0.2/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@17.0.2/umd/react-dom.development.js"></script>
+    <script>
+        const { useState, useEffect } = React;
+        const { render } = ReactDOM;
+        
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [content, setContent] = useState([]);
+            const [watchHistory, setWatchHistory] = useState([]);
+            const [favorites, setFavorites] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            
+            const login = async (username, password) => {
+                try {
+                    const response = await fetch('/users/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        setUser(data.user);
+                    } else {
+                        setError(data.message);
+                    }
+                } catch (error) {
+                    setError(error.message);
+                }
+            };
+            
+            const getContent = async () => {
+                try {
+                    const response = await fetch('/content');
+                    const data = await response.json();
+                    setContent(data);
+                } catch (error) {
+                    setError(error.message);
+                }
+            };
+            
+            const getWatchHistory = async () => {
+                try {
+                    const response = await fetch('/watch-history');
+                    const data = await response.json();
+                    setWatchHistory(data);
+                } catch (error) {
+                    setError(error.message);
+                }
+            };
+            
+            const getFavorites = async () => {
+                try {
+                    const response = await fetch('/favorites');
+                    const data = await response.json();
+                    setFavorites(data);
+                } catch (error) {
+                    setError(error.message);
+                }
+            };
+            
+            const addWatchHistory = async (contentId) => {
+                try {
+                    const response = await fetch('/watch-history', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ contentId })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        getWatchHistory();
+                    } else {
+                        setError(data.message);
+                    }
+                } catch (error) {
+                    setError(error.message);
+                }
+            };
+            
+            const addFavorite = async (contentId) => {
+                try {
+                    const response = await fetch('/favorites', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ contentId })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        getFavorites();
+                    } else {
+                        setError(data.message);
+                    }
+                } catch (error) {
+                    setError(error.message);
+                }
+            };
+            
+            useEffect(() => {
+                if (user) {
+                    getContent();
+                    getWatchHistory();
+                    getFavorites();
+                }
+            }, [user]);
+            
+            if (loading) {
+                return <div className="flex justify-center items-center h-screen">Loading...</div>;
+            }
+            
+            if (error) {
+                return <div className="flex justify-center items-center h-screen">{error}</div>;
+            }
+            
+            return (
+                <div>
+                    {user ? (
+                        <div>
+                            <h1 className="text-3xl font-bold mb-4">Welcome, {user.username}!</h1>
+                            <div className="grid grid-cols-3 gap-4">
+                                {content.map((item) => (
+                                    <div key={item.id} className="bg-gray-100 p-4 rounded">
+                                        <h2 className="text-2xl font-bold mb-2">{item.title}</h2>
+                                        <p className="text-gray-600">{item.description}</p>
+                                        <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onClick={() => addWatchHistory(item.id)}>Watch</button>
+                                        <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onClick={() => addFavorite(item.id)}>Favorite</button>
+                                    </div>
+                                ))}
+                            </div>
+                            <h1 className="text-3xl font-bold mb-4">Watch History:</h1>
+                            <div className="grid grid-cols-3 gap-4">
+                                {watchHistory.map((item) => (
+                                    <div key={item.id} className="bg-gray-100 p-4 rounded">
+                                        <h2 className="text-2xl font-bold mb-2">{item.title}</h2>
+                                        <p className="text-gray-600">{item.description}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            <h1 className="text-3xl font-bold mb-4">Favorites:</h1>
+                            <div className="grid grid-cols-3 gap-4">
+                                {favorites.map((item) => (
+                                    <div key={item.id} className="bg-gray-100 p-4 rounded">
+                                        <h2 className="text-2xl font-bold mb-2">{item.title}</h2>
+                                        <p className="text-gray-600">{item.description}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div>
+                            <h1 className="text-3xl font-bold mb-4">Login:</h1>
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const username = e.target.username.value;
+                                const password = e.target.password.value;
+                                login(username, password);
+                            }}>
+                                <input type="text" name="username" placeholder="Username" className="bg-gray-100 p-2 rounded" />
+                                <input type="password" name="password" placeholder="Password" className="bg-gray-100 p-2 rounded" />
+                                <button type="submit" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Login</button>
+                            </form>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        
+        render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
